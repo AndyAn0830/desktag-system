@@ -590,6 +590,135 @@
   .conn-status.online { background: var(--avail-bg); color: var(--avail-fg); }
   .conn-status.offline { background: var(--reserve-bg); color: var(--reserve-fg); }
 
+  /* ========== 甘特圖 ========== */
+  .gantt-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .gantt-controls .chip { padding: 5px 12px; font-size: 12px; }
+  .gantt-legend {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    flex-wrap: wrap;
+  }
+  .gantt-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+  .gantt-legend-bar {
+    width: 18px;
+    height: 12px;
+    border-radius: 3px;
+  }
+  .gantt-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    -webkit-overflow-scrolling: touch;
+  }
+  .gantt-table {
+    border-collapse: collapse;
+    font-size: 12px;
+    width: 100%;
+  }
+  .gantt-table th, .gantt-table td {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    white-space: nowrap;
+    padding: 0;
+    vertical-align: middle;
+  }
+  .gantt-table .day, .gantt-table .day-head {
+    width: 38px;
+    min-width: 38px;
+    height: 32px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .gantt-table .day-head {
+    background: var(--bg);
+    font-weight: 700;
+    font-size: 11px;
+    padding: 4px 0;
+    line-height: 1.2;
+  }
+  .gantt-table .day-head.today {
+    background: var(--primary);
+    color: white;
+  }
+  .gantt-table .day-head.weekend { background: #F2EEE3; }
+  .gantt-table .day.weekend { background: #FBF8F0; }
+  .gantt-table .day.today { background: var(--primary-light); }
+  .gantt-table .name-col {
+    text-align: left;
+    font-family: 'Noto Sans TC', sans-serif;
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    z-index: 2;
+    min-width: 150px;
+    max-width: 150px;
+    padding: 6px 12px;
+    border-right: 2px solid var(--border-strong);
+    font-size: 13px;
+  }
+  .gantt-table thead .name-col { background: var(--bg); font-weight: 700; }
+  .gantt-table .name-col .sub {
+    display: block;
+    font-size: 10px;
+    color: var(--ink-muted);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+  .gantt-table .day.bar-reserve {
+    background: var(--reserve-fg);
+    border-color: var(--reserve-fg);
+  }
+  .gantt-table .day.bar-borrow {
+    background: var(--borrow-fg);
+    border-color: var(--borrow-fg);
+  }
+  .gantt-table .day.bar-user {
+    background: var(--primary);
+    border-color: var(--primary-dark);
+    box-shadow: inset 0 0 0 1px var(--primary-dark);
+  }
+  .gantt-table .user-row .name-col {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-weight: 700;
+  }
+  .gantt-table tr.user-row td.day:not(.bar-user) {
+    background: rgba(45, 95, 93, 0.04);
+  }
+  .gantt-table .usage-row td {
+    background: var(--bg);
+    font-weight: 700;
+    height: 30px;
+  }
+  .gantt-table .usage-row .name-col {
+    background: var(--bg);
+    font-size: 12px;
+  }
+  .gantt-table .usage-cell { font-weight: 700; }
+  .gantt-table .usage-cell.low { color: var(--avail-fg); }
+  .gantt-table .usage-cell.med { color: var(--reserve-fg); }
+  .gantt-table .usage-cell.high { color: var(--borrow-fg); }
+  .gantt-table .usage-cell.over {
+    background: var(--borrow-fg) !important;
+    color: white !important;
+  }
+  .gantt-empty {
+    padding: 32px;
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+
   @media (max-width: 640px) {
     .topbar { padding: 12px 16px; }
     .title { font-size: 17px; }
@@ -669,6 +798,27 @@
         <button class="btn btn-primary" id="r_submit">送出預約登記</button>
       </div>
     </div>
+
+    <!-- 甘特圖視覺化 -->
+    <div class="card">
+      <div class="section-title">借用情形預覽</div>
+      <div class="section-desc">目前所有預約與借出的時段一覽，您填寫的日期與數量會即時加入比較</div>
+
+      <div class="gantt-controls">
+        <div class="filter-chips">
+          <button class="chip active" data-range="30">未來 30 天</button>
+          <button class="chip" data-range="60">未來 60 天</button>
+          <button class="chip" data-range="90">未來 90 天</button>
+        </div>
+        <div class="gantt-legend">
+          <span class="gantt-legend-item"><span class="gantt-legend-bar" style="background: var(--reserve-fg);"></span>已預約</span>
+          <span class="gantt-legend-item"><span class="gantt-legend-bar" style="background: var(--borrow-fg);"></span>借用中</span>
+          <span class="gantt-legend-item"><span class="gantt-legend-bar" style="background: var(--primary);"></span>您的預約</span>
+        </div>
+      </div>
+
+      <div class="gantt-wrap" id="reserveGanttWrap"></div>
+    </div>
   </section>
 
   <!-- ============================================================
@@ -731,7 +881,7 @@
               <div class="stat-value" id="statBorrow">0<span class="stat-suffix">個</span></div>
             </div>
             <div class="stat reserve">
-              <div class="stat-label">已登記</div>
+              <div class="stat-label">已預約</div>
               <div class="stat-value" id="statReserve">0<span class="stat-suffix">個</span></div>
             </div>
             <div class="stat avail">
@@ -843,7 +993,7 @@
           <div class="records-toolbar">
             <div class="filter-chips" id="recordFilter">
               <button class="chip active" data-filter="all">全部</button>
-              <button class="chip" data-filter="已登記">已登記</button>
+              <button class="chip" data-filter="已預約">已預約</button>
               <button class="chip" data-filter="借用中">借用中</button>
               <button class="chip" data-filter="已歸還">已歸還</button>
             </div>
@@ -948,6 +1098,7 @@ function initFirebase() {
     useFirebase = true;
     db.on("value", snap => {
       records = snap.val() || {};
+      migrateOldStatus();
       renderAll();
       setConnStatus("online", "已連線 Firebase");
     }, err => {
@@ -975,10 +1126,26 @@ function loadFromLocal() {
     const data = localStorage.getItem("desktag-records");
     records = data ? JSON.parse(data) : {};
   } catch (e) { records = {}; }
+  migrateOldStatus();
   renderAll();
 }
 function saveToLocal() {
   localStorage.setItem("desktag-records", JSON.stringify(records));
+}
+
+// 將舊版「已登記」狀態自動遷移為「已預約」
+function migrateOldStatus() {
+  let migrated = 0;
+  Object.entries(records).forEach(([id, r]) => {
+    if (r && r.status === "已登記") {
+      r.status = "已預約";
+      migrated++;
+      if (useFirebase && db) {
+        db.child(id).update({ status: "已預約" });
+      }
+    }
+  });
+  if (migrated > 0 && !useFirebase) saveToLocal();
 }
 
 function pushRecord(record) {
@@ -1058,7 +1225,7 @@ function computeStatus(startDate, endDate) {
     if (r.status === "借用中" && Array.isArray(r.selectedItems)) {
       r.selectedItems.forEach(n => borrowItems.add(n));
       borrowQty += r.selectedItems.length;
-    } else if (r.status === "已登記") {
+    } else if (r.status === "已預約") {
       reservedQty += (r.quantity || 0);
     }
   });
@@ -1182,8 +1349,8 @@ reserveStart.value = todayStr();
 reserveEnd.value = todayStr();
 
 [reserveStart, reserveEnd, reserveQty].forEach(el => {
-  el.addEventListener("change", checkReserveAvail);
-  el.addEventListener("input", checkReserveAvail);
+  el.addEventListener("change", () => { checkReserveAvail(); renderGantt(); });
+  el.addEventListener("input", () => { checkReserveAvail(); renderGantt(); });
 });
 
 function checkReserveAvail() {
@@ -1230,7 +1397,7 @@ document.getElementById("r_submit").addEventListener("click", async () => {
     unit, extension: ext, borrowerName: name,
     borrowDate: s, expectedReturnDate: e,
     quantity: q, selectedItems: null,
-    status: "已登記",
+    status: "已預約",
     createdAt: Date.now(),
     returnedAt: null
   };
@@ -1259,7 +1426,7 @@ function checkExistingReservation() {
   const name = document.getElementById("l_name").value.trim();
   if (!name) return;
   const matched = Object.values(records).filter(r =>
-    r && r.status === "已登記" && r.borrowerName === name
+    r && r.status === "已預約" && r.borrowerName === name
   );
   if (matched.length > 0) {
     const latest = matched.sort((a,b) => b.createdAt - a.createdAt)[0];
@@ -1414,7 +1581,7 @@ function renderReturnTable() {
   if (!tbody) return;
   const keyword = document.getElementById("returnSearch").value.trim();
   const list = Object.values(records)
-    .filter(r => r && (r.status === "借用中" || r.status === "已登記"))
+    .filter(r => r && (r.status === "借用中" || r.status === "已預約"))
     .filter(r => !keyword || r.borrowerName.includes(keyword) || r.unit.includes(keyword))
     .sort((a, b) => b.createdAt - a.createdAt);
   if (list.length === 0) {
@@ -1446,7 +1613,7 @@ function renderItems(r) {
 }
 function statusClass(s) {
   if (s === "借用中") return "s-borrow";
-  if (s === "已登記") return "s-reserve";
+  if (s === "已預約") return "s-reserve";
   return "s-return";
 }
 
@@ -1533,6 +1700,135 @@ function renderRecordsTable() {
   `).join("");
 }
 
+// ============== 預約登記甘特圖 ==============
+let ganttDayRange = 30;
+
+document.querySelectorAll(".gantt-controls .chip[data-range]").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll(".gantt-controls .chip[data-range]").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    ganttDayRange = parseInt(chip.dataset.range);
+    renderGantt();
+  });
+});
+
+function renderGantt() {
+  const wrap = document.getElementById("reserveGanttWrap");
+  if (!wrap) return;
+
+  // 取出所有未歸還的紀錄
+  const active = Object.values(records)
+    .filter(r => r && (r.status === "已預約" || r.status === "借用中"))
+    .sort((a, b) => a.borrowDate.localeCompare(b.borrowDate));
+
+  // 計算日期欄位
+  const today = new Date(todayStr() + "T00:00:00");
+  const days = [];
+  for (let i = 0; i < ganttDayRange; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const dd = String(d.getDate()).padStart(2,"0");
+    days.push({
+      str: `${y}-${m}-${dd}`,
+      mm: d.getMonth() + 1,
+      dd: d.getDate(),
+      wd: d.getDay(),
+      isToday: i === 0,
+      isWeekend: d.getDay() === 0 || d.getDay() === 6
+    });
+  }
+
+  // 取得使用者填寫的預覽資料
+  const userStart = document.getElementById("r_start").value;
+  const userEnd = document.getElementById("r_end").value;
+  const userQty = parseInt(document.getElementById("r_qty").value) || 0;
+  const hasPreview = userStart && userEnd && userQty > 0 && userStart <= userEnd;
+
+  const wd = ["日","一","二","三","四","五","六"];
+
+  // === 表頭 ===
+  let html = '<table class="gantt-table"><thead><tr>';
+  html += '<th class="name-col">借用人 / 數量</th>';
+  days.forEach(d => {
+    const cls = ["day-head"];
+    if (d.isToday) cls.push("today");
+    if (d.isWeekend) cls.push("weekend");
+    html += `<th class="${cls.join(" ")}">${d.mm}/${d.dd}<br><span style="font-weight:400;font-size:10px;opacity:0.7">${wd[d.wd]}</span></th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  // === 使用者預覽列 ===
+  if (hasPreview) {
+    html += '<tr class="user-row"><td class="name-col">★ 您的預約<span class="sub">數量 ' + userQty + ' 個</span></td>';
+    days.forEach(d => {
+      const cls = ["day"];
+      if (d.isWeekend) cls.push("weekend");
+      if (d.isToday) cls.push("today");
+      if (d.str >= userStart && d.str <= userEnd) cls.push("bar-user");
+      html += `<td class="${cls.join(" ")}"></td>`;
+    });
+    html += '</tr>';
+  }
+
+  // === 既有紀錄列 ===
+  if (active.length === 0 && !hasPreview) {
+    html += `<tr><td colspan="${days.length + 1}" class="gantt-empty">目前沒有任何預約或借出紀錄</td></tr>`;
+  } else {
+    active.forEach(r => {
+      const qty = (r.selectedItems && r.selectedItems.length) ? r.selectedItems.length : (r.quantity || 0);
+      const barCls = r.status === "借用中" ? "bar-borrow" : "bar-reserve";
+      html += `<tr><td class="name-col">${escapeHtml(r.borrowerName)}<span class="sub">${escapeHtml(r.unit)} · 數量 ${qty}</span></td>`;
+      days.forEach(d => {
+        const cls = ["day"];
+        if (d.isWeekend) cls.push("weekend");
+        if (d.isToday) cls.push("today");
+        if (d.str >= r.borrowDate && d.str <= r.expectedReturnDate) {
+          cls.push(barCls);
+        }
+        html += `<td class="${cls.join(" ")}"></td>`;
+      });
+      html += '</tr>';
+    });
+  }
+
+  // === 每日已用 / 剩餘可借 ===
+  const dailyUsage = days.map(d => {
+    let used = 0;
+    Object.values(records).forEach(r => {
+      if (!r || r.status === "已歸還") return;
+      if (d.str >= r.borrowDate && d.str <= r.expectedReturnDate) {
+        const q = (r.selectedItems && r.selectedItems.length) ? r.selectedItems.length : (r.quantity || 0);
+        used += q;
+      }
+    });
+    if (hasPreview && d.str >= userStart && d.str <= userEnd) used += userQty;
+    return used;
+  });
+
+  html += '<tr class="usage-row"><td class="name-col">每日已用</td>';
+  dailyUsage.forEach(u => {
+    html += `<td class="day">${u}</td>`;
+  });
+  html += '</tr>';
+
+  html += '<tr class="usage-row"><td class="name-col">剩餘可借</td>';
+  dailyUsage.forEach(u => {
+    const remain = TOTAL_TAGS - u;
+    let cls = "usage-cell ";
+    if (remain < 0) cls += "over";
+    else if (remain < 10) cls += "high";
+    else if (remain < 30) cls += "med";
+    else cls += "low";
+    html += `<td class="day ${cls}">${remain}</td>`;
+  });
+  html += '</tr>';
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
 // ============== 全部重新渲染 ==============
 function renderAll() {
   if (adminUnlocked) {
@@ -1541,8 +1837,9 @@ function renderAll() {
     renderReturnTable();
     renderRecordsTable();
   }
-  // 預約頁的可借用提示也需要更新
+  // 預約頁的可借用提示與甘特圖
   checkReserveAvail();
+  renderGantt();
 }
 
 // ============== 啟動 ==============
