@@ -590,6 +590,35 @@
   .conn-status.online { background: var(--avail-bg); color: var(--avail-fg); }
   .conn-status.offline { background: var(--reserve-bg); color: var(--reserve-fg); }
 
+  /* 台灣時間時鐘 */
+  .tw-clock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.2;
+    padding: 4px 12px;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    margin-right: 4px;
+  }
+  .tw-clock-date {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tw-clock-time {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 640px) {
+    .tw-clock { padding: 2px 8px; }
+    .tw-clock-date { font-size: 10px; }
+    .tw-clock-time { font-size: 13px; }
+  }
+
   /* ========== 甘特圖 ========== */
   .gantt-controls {
     display: flex;
@@ -739,6 +768,10 @@
   <div class="title-wrap">
     <div class="title">電子紙桌牌借用系統</div>
     <div class="subtitle">花蓮慈濟醫院 · 總務室</div>
+  </div>
+  <div class="tw-clock" id="twClock" title="台灣時間 Asia/Taipei">
+    <div class="tw-clock-date" id="twClockDate">—</div>
+    <div class="tw-clock-time" id="twClockTime">—</div>
   </div>
   <span class="conn-status" id="connStatus">連線中...</span>
 </header>
@@ -1174,20 +1207,48 @@ function updateRecord(id, updates) {
 }
 
 // ============== 工具 ==============
+// 取得「台灣時間」當下日期，格式 YYYY-MM-DD
 function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + "-" +
-    String(d.getMonth()+1).padStart(2,"0") + "-" +
-    String(d.getDate()).padStart(2,"0");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const get = t => parts.find(p => p.type === t).value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
+// 將時間戳格式化為台灣時間 YYYY/MM/DD HH:mm
 function fmtDateTime(ts) {
   if (!ts) return "—";
-  const d = new Date(ts);
-  return d.getFullYear() + "/" +
-    String(d.getMonth()+1).padStart(2,"0") + "/" +
-    String(d.getDate()).padStart(2,"0") + " " +
-    String(d.getHours()).padStart(2,"0") + ":" +
-    String(d.getMinutes()).padStart(2,"0");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(new Date(ts));
+  const get = t => parts.find(p => p.type === t).value;
+  return `${get("year")}/${get("month")}/${get("day")} ${get("hour")}:${get("minute")}`;
+}
+// 取得台灣時間的「現在」字串，含星期(用於 header 時鐘)
+function nowTaipeiStr() {
+  const d = new Date();
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false, weekday: "short"
+  }).formatToParts(d);
+  const get = t => dateParts.find(p => p.type === t)?.value || "";
+  const wdMap = { Sun: "日", Mon: "一", Tue: "二", Wed: "三", Thu: "四", Fri: "五", Sat: "六" };
+  return {
+    date: `${get("year")}/${get("month")}/${get("day")}`,
+    time: `${get("hour")}:${get("minute")}:${get("second")}`,
+    weekday: wdMap[get("weekday")] || ""
+  };
 }
 function dateOverlap(s1, e1, s2, e2) {
   return s1 <= e2 && e1 >= s2;
@@ -1845,6 +1906,36 @@ function renderAll() {
 // ============== 啟動 ==============
 initFirebase();
 renderAll();
+
+// ============== 台灣時間時鐘 ==============
+let lastDateStr = todayStr();
+function updateTwClock() {
+  const now = nowTaipeiStr();
+  const dateEl = document.getElementById("twClockDate");
+  const timeEl = document.getElementById("twClockTime");
+  if (dateEl) dateEl.textContent = `${now.date} (${now.weekday})`;
+  if (timeEl) timeEl.textContent = now.time;
+
+  // 偵測日期是否變更(跨日)，若是則重新渲染與更新日期預設值
+  const curDate = todayStr();
+  if (curDate !== lastDateStr) {
+    lastDateStr = curDate;
+    // 將「預設為今日」的欄位更新為新的日期
+    const todayInputs = [
+      "dashStart", "dashEnd",
+      "r_start", "r_end",
+      "l_start", "l_end"
+    ];
+    todayInputs.forEach(id => {
+      const el = document.getElementById(id);
+      // 僅當原值為昨日(舊的lastDateStr)時才更新，避免覆蓋使用者手動選擇
+      if (el && el.value === lastDateStr) el.value = curDate;
+    });
+    renderAll();
+  }
+}
+updateTwClock();
+setInterval(updateTwClock, 1000);
 
 </script>
 
