@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電子紙桌牌借用系統 | 總務室</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- 字型 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #F8F6F1;
+    --surface: #FFFFFF;
+    --ink: #1F2A2E;
+    --ink-soft: #4A5A60;
+    --ink-muted: #8A969C;
+    --border: #E5E1D8;
+    --border-strong: #D4CFC2;
+
+    --primary: #2D5F5D;
+    --primary-dark: #1F4543;
+    --primary-light: #E8EFEE;
+    --accent: #B8895C;
+
+    --avail-bg: #E8F0E9;
+    --avail-fg: #3D7050;
+    --avail-border: #B8D4BE;
+
+    --reserve-bg: #FBF1E1;
+    --reserve-fg: #8B5A1F;
+    --reserve-border: #E8C998;
+
+    --borrow-bg: #F7E4DF;
+    --borrow-fg: #A03A2C;
+    --borrow-border: #E6B5AB;
+
+    --return-bg: #ECECEC;
+    --return-fg: #6A7077;
+    --return-border: #D0D0D0;
+
+    --shadow-sm: 0 1px 2px rgba(31, 42, 46, 0.04);
+    --shadow-md: 0 2px 8px rgba(31, 42, 46, 0.06);
+    --shadow-lg: 0 8px 24px rgba(31, 42, 46, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+
+  /* ========== Header ========== */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .back-btn:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+  .title-wrap { flex: 1; }
+  .title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+  }
+  .subtitle { font-size: 12px; color: var(--ink-muted); letter-spacing: 0.05em; }
+
+  /* ========== 主分頁 ========== */
+  .tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab {
+    padding: 14px 24px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-muted);
+    font-size: 15px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab:hover { color: var(--primary); }
+  .tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 700;
+  }
+  .tab.admin-tab { margin-left: auto; }
+  .tab.admin-tab.unlocked .lock-ico { color: var(--avail-fg); }
+
+  /* ========== 子分頁(後台) ========== */
+  .subtabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 20px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .subtab {
+    padding: 8px 18px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .subtab:hover { background: var(--bg); color: var(--primary); }
+  .subtab.active {
+    background: var(--primary);
+    color: white;
+    font-weight: 700;
+  }
+  .subtab.logout {
+    margin-left: auto;
+    color: #C75D5D;
+  }
+  .subtab.logout:hover { background: var(--borrow-bg); color: var(--borrow-fg); }
+
+  /* ========== Layout ========== */
+  .container { max-width: 1200px; margin: 0 auto; padding: 28px 24px 80px; }
+  .page { display: none; animation: fadeIn 0.25s; }
+  .page.active { display: block; }
+  .subpage { display: none; animation: fadeIn 0.25s; }
+  .subpage.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ========== 共用元件 ========== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card + .card { margin-top: 20px; }
+
+  .section-title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--ink);
+  }
+  .section-desc { font-size: 13px; color: var(--ink-muted); margin-bottom: 20px; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 0.02em;
+  }
+  .field label .req { color: #C75D5D; }
+  .field input, .field select {
+    padding: 10px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    transition: all 0.15s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(45, 95, 93, 0.1);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 11px 22px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--border-strong); }
+  .btn-secondary:hover { background: var(--primary-light); }
+  .btn-danger { background: #C75D5D; color: white; }
+  .btn-danger:hover { background: #A84A4A; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; flex-wrap: wrap; }
+
+  .hint {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+  }
+  .hint.show { display: block; }
+  .hint.ok { background: var(--avail-bg); color: var(--avail-fg); border-left: 3px solid var(--avail-fg); }
+  .hint.warn { background: var(--reserve-bg); color: var(--reserve-fg); border-left: 3px solid var(--reserve-fg); }
+  .hint.error { background: var(--borrow-bg); color: var(--borrow-fg); border-left: 3px solid var(--borrow-fg); }
+
+  /* ========== 前台預約頁面(較大標題凸顯為主要頁) ========== */
+  .reserve-hero {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 32px 20px;
+    background: linear-gradient(135deg, var(--primary-light) 0%, #F0E8D8 100%);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+  }
+  .reserve-hero h1 {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 28px;
+    color: var(--primary-dark);
+    margin-bottom: 8px;
+  }
+  .reserve-hero p {
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+
+  /* ========== 儀錶板 ========== */
+  .dash-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 4px;
+    background: var(--c, var(--primary));
+  }
+  .stat-label {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--c, var(--primary));
+    line-height: 1;
+  }
+  .stat-suffix { font-size: 14px; color: var(--ink-muted); margin-left: 6px; font-family: 'Noto Sans TC'; font-weight: 400; }
+
+  .stat.total { --c: var(--ink); }
+  .stat.borrow { --c: #A03A2C; }
+  .stat.reserve { --c: #8B5A1F; }
+  .stat.avail { --c: #3D7050; }
+
+  .tag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .tag-cell {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 16px;
+    border: 1.5px solid;
+    transition: all 0.15s;
+  }
+  .tag-cell.s-avail { background: var(--avail-bg); color: var(--avail-fg); border-color: var(--avail-border); }
+  .tag-cell.s-reserve { background: var(--reserve-bg); color: var(--reserve-fg); border-color: var(--reserve-border); }
+  .tag-cell.s-borrow { background: var(--borrow-bg); color: var(--borrow-fg); border-color: var(--borrow-border); }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; font-size: 13px; }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; }
+
+  /* ========== 桌牌勾選 ========== */
+  .select-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .select-cell {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 16px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.12s;
+    user-select: none;
+    position: relative;
+  }
+  .select-cell:hover:not(.disabled) {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+  .select-cell.selected {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: scale(0.96);
+  }
+  .select-cell.disabled {
+    background: var(--borrow-bg);
+    color: var(--borrow-fg);
+    border-color: var(--borrow-border);
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  .select-info {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--primary-light);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--primary-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .select-info b { font-family: 'JetBrains Mono', monospace; font-size: 16px; }
+
+  /* ========== 表格 ========== */
+  .records-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    padding: 6px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { border-color: var(--primary); color: var(--primary); }
+  .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .search-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .search-input:focus { outline: none; border-color: var(--primary); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--surface); }
+  thead { background: var(--bg); }
+  th, td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  th { font-weight: 700; color: var(--ink-soft); font-size: 13px; letter-spacing: 0.03em; }
+  tbody tr:hover { background: var(--bg); }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid;
+  }
+  .status-badge.s-reserve { background: var(--reserve-bg); color: var(--reserve-fg); border-color: var(--reserve-border); }
+  .status-badge.s-borrow { background: var(--borrow-bg); color: var(--borrow-fg); border-color: var(--borrow-border); }
+  .status-badge.s-return { background: var(--return-bg); color: var(--return-fg); border-color: var(--return-border); }
+
+  .items-list {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .items-list .num {
+    display: inline-block;
+    padding: 1px 6px;
+    margin: 1px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-radius: 4px;
+  }
+
+  .row-action {
+    padding: 5px 12px;
+    border: 1px solid var(--primary);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .row-action:hover { background: var(--primary); color: white; }
+  .row-action.danger { border-color: #C75D5D; color: #C75D5D; }
+  .row-action.danger:hover { background: #C75D5D; color: white; }
+
+  .empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 14px;
+  }
+
+  /* ========== Modal ========== */
+  .modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 42, 46, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal-mask.show { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 28px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    animation: pop 0.2s;
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .modal-title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .modal-desc { font-size: 14px; color: var(--ink-soft); margin-bottom: 18px; }
+  .modal-info {
+    background: var(--bg);
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .modal-info .label { color: var(--ink-muted); margin-right: 8px; min-width: 70px; display: inline-block; }
+
+  /* ========== 後台密碼鎖 ========== */
+  .lock-card {
+    max-width: 420px;
+    margin: 40px auto;
+    text-align: center;
+  }
+  .lock-icon {
+    font-size: 56px;
+    margin-bottom: 12px;
+  }
+
+  /* ========== Toast ========== */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: var(--ink);
+    color: white;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    transition: transform 0.25s;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.ok { background: var(--avail-fg); }
+  .toast.err { background: #A03A2C; }
+
+  .conn-status {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--ink-muted);
+  }
+  .conn-status.online { background: var(--avail-bg); color: var(--avail-fg); }
+  .conn-status.offline { background: var(--reserve-bg); color: var(--reserve-fg); }
+
+  @media (max-width: 640px) {
+    .topbar { padding: 12px 16px; }
+    .title { font-size: 17px; }
+    .container { padding: 20px 16px 60px; }
+    .card { padding: 18px; }
+    .stat-value { font-size: 30px; }
+    .tab { padding: 12px 16px; font-size: 14px; }
+    .reserve-hero h1 { font-size: 22px; }
+    .subtab { padding: 7px 12px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="topbar">
+  <a href="https://andyan0830.github.io/-General-Affairs-Office-Integration-System./" class="back-btn">← 返回主畫面</a>
+  <div class="title-wrap">
+    <div class="title">電子紙桌牌借用系統</div>
+    <div class="subtitle">花蓮慈濟醫院 · 總務室</div>
+  </div>
+  <span class="conn-status" id="connStatus">連線中...</span>
+</header>
+
+<!-- 主分頁 -->
+<nav class="tabs">
+  <button class="tab active" data-page="reserve">預約登記</button>
+  <button class="tab admin-tab" data-page="admin"><span class="lock-ico">🔒</span> 後台管理</button>
+</nav>
+
+<div class="container">
+
+  <!-- ============================================================
+       前台：預約登記
+       ============================================================ -->
+  <section class="page active" id="page-reserve">
+    <div class="reserve-hero">
+      <h1>桌牌預約登記</h1>
+      <p>請填寫以下資料完成預約，借出與歸還由總務室同仁處理</p>
+    </div>
+
+    <div class="card">
+      <div class="section-title">預約借用資料</div>
+      <div class="section-desc">系統會自動檢查您所選日期區間的可借用數量</div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>單位 <span class="req">*</span></label>
+          <input type="text" id="r_unit" placeholder="例如：護理部">
+        </div>
+        <div class="field">
+          <label>分機 <span class="req">*</span></label>
+          <input type="text" id="r_ext" placeholder="例如:1234">
+        </div>
+        <div class="field">
+          <label>姓名 <span class="req">*</span></label>
+          <input type="text" id="r_name" placeholder="借用人姓名">
+        </div>
+        <div class="field">
+          <label>預約借用日 <span class="req">*</span></label>
+          <input type="date" id="r_start">
+        </div>
+        <div class="field">
+          <label>預計歸還日 <span class="req">*</span></label>
+          <input type="date" id="r_end">
+        </div>
+        <div class="field">
+          <label>借用數量 <span class="req">*</span></label>
+          <input type="number" id="r_qty" min="1" max="60" placeholder="1 ~ 60">
+        </div>
+      </div>
+
+      <div class="hint" id="r_hint"></div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" id="r_reset">清除</button>
+        <button class="btn btn-primary" id="r_submit">送出預約登記</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       後台管理
+       ============================================================ -->
+  <section class="page" id="page-admin">
+
+    <!-- 後台密碼鎖 -->
+    <div class="card lock-card" id="adminLock">
+      <div class="lock-icon">🔐</div>
+      <div class="section-title">後台管理</div>
+      <div class="section-desc">請輸入管理密碼以進入後台</div>
+      <div class="field" style="margin-top: 12px;">
+        <input type="password" id="adminPwd" placeholder="請輸入密碼" style="text-align: center; font-size: 18px; letter-spacing: 4px; padding: 12px;">
+      </div>
+      <div class="hint" id="adminPwdHint"></div>
+      <button class="btn btn-primary" id="adminUnlock" style="margin-top: 16px; width: 100%;">解鎖</button>
+    </div>
+
+    <!-- 後台主面板 -->
+    <div id="adminPanel" style="display: none;">
+
+      <!-- 子分頁 -->
+      <nav class="subtabs">
+        <button class="subtab active" data-subpage="dashboard">儀錶板</button>
+        <button class="subtab" data-subpage="lend">借出登記</button>
+        <button class="subtab" data-subpage="return">歸還管理</button>
+        <button class="subtab" data-subpage="records">借用紀錄</button>
+        <button class="subtab logout" id="adminLogout">🔒 鎖定</button>
+      </nav>
+
+      <!-- 儀錶板 -->
+      <div class="subpage active" id="sub-dashboard">
+        <div class="card">
+          <div class="section-title">統計儀錶板</div>
+          <div class="section-desc">選擇日期區間，即時計算可借用數量</div>
+
+          <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); max-width: 600px;">
+            <div class="field">
+              <label>查詢起日</label>
+              <input type="date" id="dashStart">
+            </div>
+            <div class="field">
+              <label>查詢迄日</label>
+              <input type="date" id="dashEnd">
+            </div>
+            <div class="field" style="justify-content: flex-end;">
+              <label>&nbsp;</label>
+              <button class="btn btn-secondary" id="dashToday">查詢今日</button>
+            </div>
+          </div>
+
+          <div class="dash-stats" style="margin-top: 24px;">
+            <div class="stat total">
+              <div class="stat-label">總桌牌數</div>
+              <div class="stat-value">60<span class="stat-suffix">個</span></div>
+            </div>
+            <div class="stat borrow">
+              <div class="stat-label">借用中</div>
+              <div class="stat-value" id="statBorrow">0<span class="stat-suffix">個</span></div>
+            </div>
+            <div class="stat reserve">
+              <div class="stat-label">已登記</div>
+              <div class="stat-value" id="statReserve">0<span class="stat-suffix">個</span></div>
+            </div>
+            <div class="stat avail">
+              <div class="stat-label">可借用</div>
+              <div class="stat-value" id="statAvail">60<span class="stat-suffix">個</span></div>
+            </div>
+          </div>
+
+          <div style="margin-top: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+              <strong style="font-size: 15px;">1 ～ 60 號桌牌狀態</strong>
+              <span style="font-size: 12px; color: var(--ink-muted);" id="dashRangeLabel"></span>
+            </div>
+            <div class="tag-grid" id="dashGrid"></div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-dot" style="background: var(--avail-bg); border-color: var(--avail-border);"></span>可借用</span>
+              <span class="legend-item"><span class="legend-dot" style="background: var(--borrow-bg); border-color: var(--borrow-border);"></span>借用中</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 借出登記 -->
+      <div class="subpage" id="sub-lend">
+        <div class="card">
+          <div class="section-title">實際借出登記</div>
+          <div class="section-desc">填寫借出資料並勾選實際借出的桌牌編號</div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label>單位 <span class="req">*</span></label>
+              <input type="text" id="l_unit" placeholder="例如：護理部">
+            </div>
+            <div class="field">
+              <label>分機 <span class="req">*</span></label>
+              <input type="text" id="l_ext" placeholder="例如:1234">
+            </div>
+            <div class="field">
+              <label>姓名 <span class="req">*</span></label>
+              <input type="text" id="l_name" placeholder="借用人姓名">
+            </div>
+            <div class="field">
+              <label>預約借用日 <span class="req">*</span></label>
+              <input type="date" id="l_start">
+            </div>
+            <div class="field">
+              <label>預計歸還日 <span class="req">*</span></label>
+              <input type="date" id="l_end">
+            </div>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+              <strong style="font-size: 15px;">勾選桌牌編號（可複選）</strong>
+              <span style="font-size: 12px; color: var(--ink-muted);">紅底＝該期間已被借出</span>
+            </div>
+            <div class="select-grid" id="lendGrid"></div>
+            <div class="select-info">
+              <span>已選擇：<b id="lendCount">0</b> 個</span>
+              <span id="lendList" style="font-family: 'JetBrains Mono', monospace; font-size: 13px;"></span>
+            </div>
+          </div>
+
+          <div class="hint" id="l_hint"></div>
+
+          <div class="actions">
+            <button class="btn btn-secondary" id="l_reset">清除</button>
+            <button class="btn btn-primary" id="l_submit">確認借出</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 歸還管理 -->
+      <div class="subpage" id="sub-return">
+        <div class="card">
+          <div class="section-title">歸還管理</div>
+          <div class="section-desc">輸入借用人姓名，點選紀錄一次完成歸還</div>
+
+          <div class="records-toolbar" style="margin-top: 8px;">
+            <input type="search" class="search-input" id="returnSearch" placeholder="輸入姓名搜尋...">
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th>單位</th>
+                  <th>分機</th>
+                  <th>借用日</th>
+                  <th>歸還日</th>
+                  <th>桌牌編號</th>
+                  <th>狀態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="returnTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 借用紀錄 -->
+      <div class="subpage" id="sub-records">
+        <div class="card">
+          <div class="section-title">借用紀錄</div>
+          <div class="section-desc">查看所有預約、借出與歸還紀錄</div>
+
+          <div class="records-toolbar">
+            <div class="filter-chips" id="recordFilter">
+              <button class="chip active" data-filter="all">全部</button>
+              <button class="chip" data-filter="已登記">已登記</button>
+              <button class="chip" data-filter="借用中">借用中</button>
+              <button class="chip" data-filter="已歸還">已歸還</button>
+            </div>
+            <input type="search" class="search-input" id="recordSearch" placeholder="搜尋姓名、單位...">
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>建立時間</th>
+                  <th>姓名</th>
+                  <th>單位 / 分機</th>
+                  <th>借用日</th>
+                  <th>歸還日</th>
+                  <th>數量 / 桌牌編號</th>
+                  <th>狀態</th>
+                </tr>
+              </thead>
+              <tbody id="recordTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<!-- 歸還確認 Modal -->
+<div class="modal-mask" id="returnModal">
+  <div class="modal">
+    <div class="modal-title">確認歸還</div>
+    <div class="modal-desc">確認後，本筆紀錄所有桌牌將一次歸還</div>
+    <div class="modal-info" id="returnModalInfo"></div>
+    <div class="actions">
+      <button class="btn btn-secondary" id="returnModalCancel">取消</button>
+      <button class="btn btn-primary" id="returnModalConfirm">確認歸還</button>
+    </div>
+  </div>
+</div>
+
+<!-- 預約轉借出 Modal -->
+<div class="modal-mask" id="convertModal">
+  <div class="modal">
+    <div class="modal-title">將預約轉為借出</div>
+    <div class="modal-desc">系統偵測到同名預約紀錄，是否將此預約直接轉為借出？</div>
+    <div class="modal-info" id="convertModalInfo"></div>
+    <div class="actions">
+      <button class="btn btn-secondary" id="convertCancel">建立新借出</button>
+      <button class="btn btn-primary" id="convertConfirm">轉為借出</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   電子紙桌牌借用系統
+   - 前台: 預約登記
+   - 後台(密碼 13391): 儀錶板/借出登記/歸還管理/借用紀錄
+   ============================================================ */
+
+// ============== Firebase 設定 ==============
+// ⚠️ 請替換為你自己的 Firebase 專案設定
+const firebaseConfig = {
+  apiKey: "AIzaSyAJwOGevMCvqAQEBa7lYk-sl5sn9FBGcig",
+  authDomain: "meeting-room-schedule-6ac0e.firebaseapp.com",
+  databaseURL: "https://meeting-room-schedule-6ac0e-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "meeting-room-schedule-6ac0e",
+  storageBucket: "meeting-room-schedule-6ac0e.firebasestorage.app",
+  messagingSenderId: "227665623205",
+  appId: "1:227665623205:web:69bee095c481da38f5754c"
+};
+
+const ADMIN_PASSWORD = "13391";
+const TOTAL_TAGS = 60;
+const DB_PATH = "desktag-system/records";
+
+// ============== 狀態 ==============
+let db = null;
+let useFirebase = false;
+let records = {};
+let lendSelectedItems = new Set();
+let adminUnlocked = false;
+let pendingConvertRecord = null;
+
+// ============== 初始化 Firebase ==============
+function initFirebase() {
+  try {
+    if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+      console.warn("Firebase 尚未設定，改用本機儲存");
+      useFirebase = false;
+      loadFromLocal();
+      setConnStatus("offline", "本機模式");
+      return;
+    }
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database().ref(DB_PATH);
+    useFirebase = true;
+    db.on("value", snap => {
+      records = snap.val() || {};
+      renderAll();
+      setConnStatus("online", "已連線 Firebase");
+    }, err => {
+      console.error("Firebase 連線錯誤", err);
+      setConnStatus("offline", "連線失敗");
+      useFirebase = false;
+      loadFromLocal();
+    });
+  } catch (e) {
+    console.error(e);
+    useFirebase = false;
+    loadFromLocal();
+    setConnStatus("offline", "本機模式");
+  }
+}
+
+function setConnStatus(cls, text) {
+  const el = document.getElementById("connStatus");
+  el.className = "conn-status " + cls;
+  el.textContent = text;
+}
+
+function loadFromLocal() {
+  try {
+    const data = localStorage.getItem("desktag-records");
+    records = data ? JSON.parse(data) : {};
+  } catch (e) { records = {}; }
+  renderAll();
+}
+function saveToLocal() {
+  localStorage.setItem("desktag-records", JSON.stringify(records));
+}
+
+function pushRecord(record) {
+  if (useFirebase && db) {
+    const ref = db.push();
+    record.id = ref.key;
+    return ref.set(record);
+  } else {
+    const id = "L" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+    record.id = id;
+    records[id] = record;
+    saveToLocal();
+    renderAll();
+    return Promise.resolve();
+  }
+}
+function updateRecord(id, updates) {
+  if (useFirebase && db) {
+    return db.child(id).update(updates);
+  } else {
+    Object.assign(records[id], updates);
+    saveToLocal();
+    renderAll();
+    return Promise.resolve();
+  }
+}
+
+// ============== 工具 ==============
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + "-" +
+    String(d.getMonth()+1).padStart(2,"0") + "-" +
+    String(d.getDate()).padStart(2,"0");
+}
+function fmtDateTime(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return d.getFullYear() + "/" +
+    String(d.getMonth()+1).padStart(2,"0") + "/" +
+    String(d.getDate()).padStart(2,"0") + " " +
+    String(d.getHours()).padStart(2,"0") + ":" +
+    String(d.getMinutes()).padStart(2,"0");
+}
+function dateOverlap(s1, e1, s2, e2) {
+  return s1 <= e2 && e1 >= s2;
+}
+
+function showToast(msg, type = "") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show " + type;
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+function showHint(elId, msg, type = "warn") {
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.className = "hint show " + type;
+}
+function hideHint(elId) {
+  document.getElementById(elId).className = "hint";
+}
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+// ============== 計算狀態 ==============
+function computeStatus(startDate, endDate) {
+  const borrowItems = new Set();
+  let reservedQty = 0;
+  let borrowQty = 0;
+  Object.values(records).forEach(r => {
+    if (!r || r.status === "已歸還") return;
+    if (!dateOverlap(r.borrowDate, r.expectedReturnDate, startDate, endDate)) return;
+    if (r.status === "借用中" && Array.isArray(r.selectedItems)) {
+      r.selectedItems.forEach(n => borrowItems.add(n));
+      borrowQty += r.selectedItems.length;
+    } else if (r.status === "已登記") {
+      reservedQty += (r.quantity || 0);
+    }
+  });
+  return { borrowItems, reservedQty, borrowQty };
+}
+
+// ============== 主分頁切換 ==============
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const page = btn.dataset.page;
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.getElementById("page-" + page).classList.add("active");
+
+    // 進入後台時自動聚焦密碼欄
+    if (page === "admin" && !adminUnlocked) {
+      setTimeout(() => document.getElementById("adminPwd").focus(), 100);
+    }
+    renderAll();
+  });
+});
+
+// ============== 後台子分頁切換 ==============
+document.querySelectorAll(".subtab[data-subpage]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".subtab[data-subpage]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const sub = btn.dataset.subpage;
+    document.querySelectorAll(".subpage").forEach(p => p.classList.remove("active"));
+    document.getElementById("sub-" + sub).classList.add("active");
+    renderAll();
+  });
+});
+
+// ============== 後台密碼解鎖 ==============
+document.getElementById("adminUnlock").addEventListener("click", tryUnlockAdmin);
+document.getElementById("adminPwd").addEventListener("keydown", e => {
+  if (e.key === "Enter") tryUnlockAdmin();
+});
+
+function tryUnlockAdmin() {
+  const pwd = document.getElementById("adminPwd").value;
+  if (pwd === ADMIN_PASSWORD) {
+    adminUnlocked = true;
+    document.getElementById("adminLock").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    document.getElementById("adminPwd").value = "";
+    document.querySelector(".admin-tab").classList.add("unlocked");
+    hideHint("adminPwdHint");
+    showToast("已進入後台管理", "ok");
+    renderAll();
+  } else {
+    showHint("adminPwdHint", "密碼錯誤，請重新輸入", "error");
+    document.getElementById("adminPwd").value = "";
+  }
+}
+
+document.getElementById("adminLogout").addEventListener("click", () => {
+  adminUnlocked = false;
+  document.getElementById("adminLock").style.display = "block";
+  document.getElementById("adminPanel").style.display = "none";
+  document.querySelector(".admin-tab").classList.remove("unlocked");
+  // 預設子頁回到儀錶板
+  document.querySelectorAll(".subtab[data-subpage]").forEach((b, i) => {
+    b.classList.toggle("active", i === 0);
+  });
+  document.querySelectorAll(".subpage").forEach((p, i) => {
+    p.classList.toggle("active", i === 0);
+  });
+  showToast("已鎖定後台");
+});
+
+// ============== 儀錶板 ==============
+const dashStart = document.getElementById("dashStart");
+const dashEnd = document.getElementById("dashEnd");
+dashStart.value = todayStr();
+dashEnd.value = todayStr();
+
+dashStart.addEventListener("change", renderDashboard);
+dashEnd.addEventListener("change", renderDashboard);
+document.getElementById("dashToday").addEventListener("click", () => {
+  dashStart.value = todayStr();
+  dashEnd.value = todayStr();
+  renderDashboard();
+});
+
+function renderDashboard() {
+  const s = dashStart.value, e = dashEnd.value;
+  if (!s || !e || s > e) return;
+  const { borrowItems, reservedQty, borrowQty } = computeStatus(s, e);
+  const availQty = TOTAL_TAGS - borrowQty - reservedQty;
+  document.getElementById("statBorrow").innerHTML = borrowQty + '<span class="stat-suffix">個</span>';
+  document.getElementById("statReserve").innerHTML = reservedQty + '<span class="stat-suffix">個</span>';
+  document.getElementById("statAvail").innerHTML = Math.max(0, availQty) + '<span class="stat-suffix">個</span>';
+  document.getElementById("dashRangeLabel").textContent = s === e ? s : `${s} ～ ${e}`;
+  const grid = document.getElementById("dashGrid");
+  grid.innerHTML = "";
+  for (let i = 1; i <= TOTAL_TAGS; i++) {
+    const cell = document.createElement("div");
+    cell.className = "tag-cell";
+    cell.textContent = i;
+    if (borrowItems.has(i)) {
+      cell.classList.add("s-borrow");
+      cell.title = `${i} 號：借用中`;
+    } else {
+      cell.classList.add("s-avail");
+      cell.title = `${i} 號：可借用`;
+    }
+    grid.appendChild(cell);
+  }
+}
+
+// ============== 預約登記(前台) ==============
+const reserveStart = document.getElementById("r_start");
+const reserveEnd = document.getElementById("r_end");
+const reserveQty = document.getElementById("r_qty");
+reserveStart.value = todayStr();
+reserveEnd.value = todayStr();
+
+[reserveStart, reserveEnd, reserveQty].forEach(el => {
+  el.addEventListener("change", checkReserveAvail);
+  el.addEventListener("input", checkReserveAvail);
+});
+
+function checkReserveAvail() {
+  const s = reserveStart.value, e = reserveEnd.value;
+  const q = parseInt(reserveQty.value) || 0;
+  if (!s || !e) return hideHint("r_hint");
+  if (s > e) return showHint("r_hint", "預計歸還日不可早於借用日", "error");
+  const { reservedQty, borrowQty } = computeStatus(s, e);
+  const avail = TOTAL_TAGS - reservedQty - borrowQty;
+  if (q > avail) {
+    showHint("r_hint", `該日期區間僅剩 ${avail} 個可借用（您要借用 ${q} 個），請調整數量或日期`, "error");
+  } else if (q > 0) {
+    showHint("r_hint", `該日期區間目前可借用 ${avail} 個，您預約 ${q} 個 ✓`, "ok");
+  } else {
+    showHint("r_hint", `該日期區間目前可借用 ${avail} 個`, "warn");
+  }
+}
+
+document.getElementById("r_reset").addEventListener("click", () => {
+  ["r_unit","r_ext","r_name","r_qty"].forEach(id => document.getElementById(id).value = "");
+  reserveStart.value = todayStr();
+  reserveEnd.value = todayStr();
+  hideHint("r_hint");
+});
+
+document.getElementById("r_submit").addEventListener("click", async () => {
+  const unit = document.getElementById("r_unit").value.trim();
+  const ext = document.getElementById("r_ext").value.trim();
+  const name = document.getElementById("r_name").value.trim();
+  const s = reserveStart.value;
+  const e = reserveEnd.value;
+  const q = parseInt(reserveQty.value);
+  if (!unit || !ext || !name || !s || !e || !q) {
+    showHint("r_hint", "請填寫所有必填欄位", "error"); return;
+  }
+  if (s > e) { showHint("r_hint", "預計歸還日不可早於借用日", "error"); return; }
+  if (q < 1 || q > TOTAL_TAGS) { showHint("r_hint", "借用數量需介於 1 ~ 60", "error"); return; }
+  const { reservedQty, borrowQty } = computeStatus(s, e);
+  if (q > TOTAL_TAGS - reservedQty - borrowQty) {
+    showHint("r_hint", "該日期區間可借用數量不足，請調整借用數量或日期", "error"); return;
+  }
+  const record = {
+    type: "reservation",
+    unit, extension: ext, borrowerName: name,
+    borrowDate: s, expectedReturnDate: e,
+    quantity: q, selectedItems: null,
+    status: "已登記",
+    createdAt: Date.now(),
+    returnedAt: null
+  };
+  try {
+    await pushRecord(record);
+    showToast("預約登記成功", "ok");
+    document.getElementById("r_reset").click();
+  } catch (err) {
+    console.error(err);
+    showToast("儲存失敗：" + err.message, "err");
+  }
+});
+
+// ============== 借出登記(後台) ==============
+const lendStart = document.getElementById("l_start");
+const lendEnd = document.getElementById("l_end");
+lendStart.value = todayStr();
+lendEnd.value = todayStr();
+
+[lendStart, lendEnd].forEach(el => {
+  el.addEventListener("change", renderLendGrid);
+});
+document.getElementById("l_name").addEventListener("blur", checkExistingReservation);
+
+function checkExistingReservation() {
+  const name = document.getElementById("l_name").value.trim();
+  if (!name) return;
+  const matched = Object.values(records).filter(r =>
+    r && r.status === "已登記" && r.borrowerName === name
+  );
+  if (matched.length > 0) {
+    const latest = matched.sort((a,b) => b.createdAt - a.createdAt)[0];
+    pendingConvertRecord = latest;
+    document.getElementById("convertModalInfo").innerHTML = `
+      <div><span class="label">姓名：</span>${escapeHtml(latest.borrowerName)}</div>
+      <div><span class="label">單位：</span>${escapeHtml(latest.unit)}</div>
+      <div><span class="label">分機：</span>${escapeHtml(latest.extension)}</div>
+      <div><span class="label">借用日：</span>${latest.borrowDate} ～ ${latest.expectedReturnDate}</div>
+      <div><span class="label">數量：</span>${latest.quantity} 個</div>
+    `;
+    document.getElementById("convertModal").classList.add("show");
+  }
+}
+
+document.getElementById("convertConfirm").addEventListener("click", () => {
+  if (!pendingConvertRecord) return;
+  document.getElementById("l_unit").value = pendingConvertRecord.unit;
+  document.getElementById("l_ext").value = pendingConvertRecord.extension;
+  document.getElementById("l_name").value = pendingConvertRecord.borrowerName;
+  lendStart.value = pendingConvertRecord.borrowDate;
+  lendEnd.value = pendingConvertRecord.expectedReturnDate;
+  document.getElementById("convertModal").classList.remove("show");
+  renderLendGrid();
+  showToast("已帶入預約資料，請勾選桌牌編號");
+});
+document.getElementById("convertCancel").addEventListener("click", () => {
+  pendingConvertRecord = null;
+  document.getElementById("convertModal").classList.remove("show");
+});
+
+function renderLendGrid() {
+  const grid = document.getElementById("lendGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  const s = lendStart.value, e = lendEnd.value;
+  let disabled = new Set();
+  if (s && e && s <= e) {
+    disabled = computeStatus(s, e).borrowItems;
+  }
+  for (let i = 1; i <= TOTAL_TAGS; i++) {
+    const cell = document.createElement("div");
+    cell.className = "select-cell";
+    cell.textContent = i;
+    if (disabled.has(i)) {
+      cell.classList.add("disabled");
+      cell.title = `${i} 號：該期間已被借出`;
+    } else {
+      if (lendSelectedItems.has(i)) cell.classList.add("selected");
+      cell.addEventListener("click", () => {
+        if (lendSelectedItems.has(i)) {
+          lendSelectedItems.delete(i);
+          cell.classList.remove("selected");
+        } else {
+          lendSelectedItems.add(i);
+          cell.classList.add("selected");
+        }
+        updateLendInfo();
+      });
+    }
+    grid.appendChild(cell);
+  }
+  updateLendInfo();
+}
+
+function updateLendInfo() {
+  const c = document.getElementById("lendCount");
+  const l = document.getElementById("lendList");
+  if (!c || !l) return;
+  c.textContent = lendSelectedItems.size;
+  const sorted = [...lendSelectedItems].sort((a,b) => a - b);
+  l.textContent = sorted.length > 0 ? "編號 " + sorted.join(", ") : "";
+}
+
+document.getElementById("l_reset").addEventListener("click", () => {
+  ["l_unit","l_ext","l_name"].forEach(id => document.getElementById(id).value = "");
+  lendStart.value = todayStr();
+  lendEnd.value = todayStr();
+  lendSelectedItems.clear();
+  pendingConvertRecord = null;
+  renderLendGrid();
+  hideHint("l_hint");
+});
+
+document.getElementById("l_submit").addEventListener("click", async () => {
+  const unit = document.getElementById("l_unit").value.trim();
+  const ext = document.getElementById("l_ext").value.trim();
+  const name = document.getElementById("l_name").value.trim();
+  const s = lendStart.value;
+  const e = lendEnd.value;
+  if (!unit || !ext || !name || !s || !e) {
+    showHint("l_hint", "請填寫所有必填欄位", "error"); return;
+  }
+  if (s > e) { showHint("l_hint", "預計歸還日不可早於借用日", "error"); return; }
+  if (lendSelectedItems.size === 0) {
+    showHint("l_hint", "請至少勾選一個桌牌編號", "error"); return;
+  }
+  const { borrowItems } = computeStatus(s, e);
+  const conflict = [...lendSelectedItems].filter(n => borrowItems.has(n));
+  if (conflict.length > 0) {
+    showHint("l_hint", `編號 ${conflict.join(", ")} 已被他人借出，請重新選擇`, "error");
+    renderLendGrid(); return;
+  }
+  const selectedArr = [...lendSelectedItems].sort((a,b) => a - b);
+
+  // 從預約轉借出
+  if (pendingConvertRecord && pendingConvertRecord.borrowerName === name) {
+    try {
+      await updateRecord(pendingConvertRecord.id, {
+        type: "lending", status: "借用中",
+        selectedItems: selectedArr,
+        quantity: selectedArr.length,
+        unit, extension: ext,
+        borrowDate: s, expectedReturnDate: e,
+        lentAt: Date.now()
+      });
+      showToast(`已借出 ${selectedArr.length} 個桌牌（轉自預約）`, "ok");
+      pendingConvertRecord = null;
+      document.getElementById("l_reset").click();
+    } catch (err) {
+      showToast("儲存失敗：" + err.message, "err");
+    }
+    return;
+  }
+
+  // 新借出
+  const record = {
+    type: "lending",
+    unit, extension: ext, borrowerName: name,
+    borrowDate: s, expectedReturnDate: e,
+    quantity: selectedArr.length,
+    selectedItems: selectedArr,
+    status: "借用中",
+    createdAt: Date.now(),
+    lentAt: Date.now(),
+    returnedAt: null
+  };
+  try {
+    await pushRecord(record);
+    showToast(`已借出 ${selectedArr.length} 個桌牌`, "ok");
+    document.getElementById("l_reset").click();
+  } catch (err) {
+    showToast("儲存失敗：" + err.message, "err");
+  }
+});
+
+// ============== 歸還管理(後台) ==============
+document.getElementById("returnSearch").addEventListener("input", renderReturnTable);
+
+function renderReturnTable() {
+  const tbody = document.getElementById("returnTable");
+  if (!tbody) return;
+  const keyword = document.getElementById("returnSearch").value.trim();
+  const list = Object.values(records)
+    .filter(r => r && (r.status === "借用中" || r.status === "已登記"))
+    .filter(r => !keyword || r.borrowerName.includes(keyword) || r.unit.includes(keyword))
+    .sort((a, b) => b.createdAt - a.createdAt);
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">查無紀錄</td></tr>`; return;
+  }
+  tbody.innerHTML = list.map(r => `
+    <tr>
+      <td><strong>${escapeHtml(r.borrowerName)}</strong></td>
+      <td>${escapeHtml(r.unit)}</td>
+      <td>${escapeHtml(r.extension)}</td>
+      <td>${r.borrowDate}</td>
+      <td>${r.expectedReturnDate}</td>
+      <td>${renderItems(r)}</td>
+      <td><span class="status-badge ${statusClass(r.status)}">${r.status}</span></td>
+      <td>
+        ${r.status === "借用中"
+          ? `<button class="row-action danger" onclick="openReturnModal('${r.id}')">歸還</button>`
+          : `<button class="row-action danger" onclick="cancelReservation('${r.id}')">取消預約</button>`}
+      </td>
+    </tr>
+  `).join("");
+}
+
+function renderItems(r) {
+  if (Array.isArray(r.selectedItems) && r.selectedItems.length > 0) {
+    return `<span class="items-list">${r.selectedItems.map(n => `<span class="num">${n}</span>`).join("")}</span>`;
+  }
+  return `<span class="items-list">數量 ${r.quantity}（未指定編號）</span>`;
+}
+function statusClass(s) {
+  if (s === "借用中") return "s-borrow";
+  if (s === "已登記") return "s-reserve";
+  return "s-return";
+}
+
+window.openReturnModal = function(id) {
+  const r = records[id];
+  if (!r) return;
+  document.getElementById("returnModalInfo").innerHTML = `
+    <div><span class="label">姓名：</span>${escapeHtml(r.borrowerName)}</div>
+    <div><span class="label">單位：</span>${escapeHtml(r.unit)} / 分機 ${escapeHtml(r.extension)}</div>
+    <div><span class="label">借用日：</span>${r.borrowDate} ～ ${r.expectedReturnDate}</div>
+    <div><span class="label">桌牌編號：</span>${(r.selectedItems || []).join(", ")}（共 ${r.selectedItems?.length || 0} 個）</div>
+  `;
+  document.getElementById("returnModal").dataset.id = id;
+  document.getElementById("returnModal").classList.add("show");
+};
+
+window.cancelReservation = async function(id) {
+  if (!confirm("確定要取消此預約嗎？")) return;
+  try {
+    await updateRecord(id, { status: "已歸還", returnedAt: Date.now(), cancelReason: "取消預約" });
+    showToast("已取消預約", "ok");
+  } catch (err) {
+    showToast("操作失敗：" + err.message, "err");
+  }
+};
+
+document.getElementById("returnModalCancel").addEventListener("click", () => {
+  document.getElementById("returnModal").classList.remove("show");
+});
+
+document.getElementById("returnModalConfirm").addEventListener("click", async () => {
+  const id = document.getElementById("returnModal").dataset.id;
+  if (!id) return;
+  try {
+    await updateRecord(id, { status: "已歸還", returnedAt: Date.now() });
+    document.getElementById("returnModal").classList.remove("show");
+    showToast("已完成歸還", "ok");
+  } catch (err) {
+    showToast("歸還失敗：" + err.message, "err");
+  }
+});
+
+// ============== 借用紀錄(後台) ==============
+let recordFilterValue = "all";
+document.querySelectorAll("#recordFilter .chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#recordFilter .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    recordFilterValue = chip.dataset.filter;
+    renderRecordsTable();
+  });
+});
+document.getElementById("recordSearch").addEventListener("input", renderRecordsTable);
+
+function renderRecordsTable() {
+  const tbody = document.getElementById("recordTable");
+  if (!tbody) return;
+  const keyword = document.getElementById("recordSearch").value.trim();
+  let list = Object.values(records).filter(r => r);
+  if (recordFilterValue !== "all") {
+    list = list.filter(r => r.status === recordFilterValue);
+  }
+  if (keyword) {
+    list = list.filter(r =>
+      r.borrowerName.includes(keyword) ||
+      r.unit.includes(keyword) ||
+      r.extension.includes(keyword)
+    );
+  }
+  list.sort((a, b) => b.createdAt - a.createdAt);
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">尚無紀錄</td></tr>`; return;
+  }
+  tbody.innerHTML = list.map(r => `
+    <tr>
+      <td style="white-space: nowrap; font-size: 12px; color: var(--ink-muted);">${fmtDateTime(r.createdAt)}</td>
+      <td><strong>${escapeHtml(r.borrowerName)}</strong></td>
+      <td>${escapeHtml(r.unit)}<br><span style="font-size: 12px; color: var(--ink-muted);">分機 ${escapeHtml(r.extension)}</span></td>
+      <td>${r.borrowDate}</td>
+      <td>${r.expectedReturnDate}${r.returnedAt ? `<br><span style="font-size: 11px; color: var(--avail-fg);">已於 ${fmtDateTime(r.returnedAt)} 歸還</span>` : ""}</td>
+      <td>${renderItems(r)}</td>
+      <td><span class="status-badge ${statusClass(r.status)}">${r.status}</span></td>
+    </tr>
+  `).join("");
+}
+
+// ============== 全部重新渲染 ==============
+function renderAll() {
+  if (adminUnlocked) {
+    renderDashboard();
+    renderLendGrid();
+    renderReturnTable();
+    renderRecordsTable();
+  }
+  // 預約頁的可借用提示也需要更新
+  checkReserveAvail();
+}
+
+// ============== 啟動 ==============
+initFirebase();
+renderAll();
+
+</script>
+
+</body>
+</html>
