@@ -1293,22 +1293,46 @@ function computeStatus(startDate, endDate) {
   return { borrowItems, reservedQty, borrowQty };
 }
 
-// ============== 主分頁切換 ==============
-document.querySelectorAll(".tab").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    const page = btn.dataset.page;
-    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-    document.getElementById("page-" + page).classList.add("active");
-
-    // 進入後台時自動聚焦密碼欄
-    if (page === "admin" && !adminUnlocked) {
-      setTimeout(() => document.getElementById("adminPwd").focus(), 100);
-    }
-    renderAll();
+// ============== 主分頁切換(含瀏覽器歷史紀錄) ==============
+function navigateToPage(page, pushHistory = true) {
+  document.querySelectorAll(".tab").forEach(b => {
+    b.classList.toggle("active", b.dataset.page === page);
   });
+  document.querySelectorAll(".page").forEach(p => {
+    p.classList.toggle("active", p.id === "page-" + page);
+  });
+
+  // 進入後台時自動聚焦密碼欄
+  if (page === "admin" && !adminUnlocked) {
+    setTimeout(() => document.getElementById("adminPwd").focus(), 100);
+  }
+
+  if (pushHistory) {
+    history.pushState({ page }, "", "#" + page);
+  }
+  renderAll();
+}
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => navigateToPage(btn.dataset.page));
 });
+
+// 處理瀏覽器「上一頁 / 下一頁」按鈕
+window.addEventListener("popstate", e => {
+  const page = (e.state && e.state.page) || "reserve";
+  navigateToPage(page, false);
+});
+
+// 啟動時依照網址 hash 切換頁面，避免按上一頁跳出系統造成 404
+(function initFromHash() {
+  const hash = location.hash.slice(1);
+  if (hash === "admin" || hash === "reserve") {
+    navigateToPage(hash, false);
+    history.replaceState({ page: hash }, "", "#" + hash);
+  } else {
+    history.replaceState({ page: "reserve" }, "", location.pathname + location.search);
+  }
+})();
 
 // ============== 後台子分頁切換 ==============
 document.querySelectorAll(".subtab[data-subpage]").forEach(btn => {
