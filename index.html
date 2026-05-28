@@ -89,9 +89,6 @@
     transition: all 0.15s;
   }
   .back-btn:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
-  /* 預設隱藏返回按鈕，僅在後台解鎖後顯示 */
-  .back-btn { display: none; }
-  body.admin-mode .back-btn { display: inline-flex; }
   .title-wrap { flex: 1; }
   .title {
     font-family: 'Noto Serif TC', serif;
@@ -764,7 +761,6 @@
 
 <!-- Header -->
 <header class="topbar">
-  <a href="https://andyan0830.github.io/-General-Affairs-Office-Integration-System/" class="back-btn">← 返回主畫面</a>
   <div class="title-wrap">
     <div class="title">電子紙桌牌借用系統</div>
     <div class="subtitle">花蓮慈濟醫院 · 總務室</div>
@@ -1360,7 +1356,6 @@ function tryUnlockAdmin() {
     document.getElementById("adminPanel").style.display = "block";
     document.getElementById("adminPwd").value = "";
     document.querySelector(".admin-tab").classList.add("unlocked");
-    document.body.classList.add("admin-mode");
     hideHint("adminPwdHint");
     showToast("已進入後台管理", "ok");
     renderAll();
@@ -1375,7 +1370,6 @@ document.getElementById("adminLogout").addEventListener("click", () => {
   document.getElementById("adminLock").style.display = "block";
   document.getElementById("adminPanel").style.display = "none";
   document.querySelector(".admin-tab").classList.remove("unlocked");
-  document.body.classList.remove("admin-mode");
   // 預設子頁回到儀錶板
   document.querySelectorAll(".subtab[data-subpage]").forEach((b, i) => {
     b.classList.toggle("active", i === 0);
